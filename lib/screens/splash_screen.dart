@@ -70,19 +70,26 @@ class _SplashScreenState extends State<SplashScreen> {
               children: [
                 const Spacer(),
                 Container(
-                  width: 86,
-                  height: 86,
+                  width: 116,
+                  height: 116,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(28),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.18),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF22D3EE).withValues(alpha: 0.24),
+                        blurRadius: 28,
+                        offset: const Offset(0, 16),
+                      ),
+                    ],
                   ),
-                  child: const Icon(
-                    Icons.shopping_bag_rounded,
-                    color: Colors.white,
-                    size: 42,
+                  clipBehavior: Clip.antiAlias,
+                  child: Image.asset(
+                    'assets/branding/shoefit_logo.png',
+                    fit: BoxFit.cover,
                   ),
                 ),
                 const SizedBox(height: 22),
