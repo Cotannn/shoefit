@@ -147,56 +147,103 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                     itemBuilder: (context, index) {
                       final product = products[index];
                       return Card(
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(12),
-                          leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Image.network(
-                              product.imageUrl,
-                              width: 64,
-                              height: 64,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+                                child: Image.network(
+                                  product.imageUrl,
                                   width: 64,
                                   height: 64,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceContainerHighest,
-                                  child: const Icon(
-                                    Icons.image_not_supported_outlined,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          title: Text(product.name),
-                          subtitle: Text(
-                            '${product.brand} | ${product.category}\n'
-                            'Stock: ${product.stock} | ${AppFormatters.currency(product.price)}',
-                          ),
-                          isThreeLine: true,
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (value) async {
-                              if (value == 'edit') {
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        AddEditProductScreen(product: product),
-                                  ),
-                                );
-                                return;
-                              }
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 64,
+                                      height: 64,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.surfaceContainerHighest,
+                                      child: const Icon(
+                                        Icons.image_not_supported_outlined,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      product.name,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium,
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      '${product.brand} | ${product.category}',
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Stock: ${product.stock} | ${AppFormatters.currency(product.price)}',
+                                    ),
+                                    if (product.isFeatured ||
+                                        product.isNewArrival) ...[
+                                      const SizedBox(height: 8),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 6,
+                                        children: [
+                                          if (product.isFeatured)
+                                            _ProductFlagBadge(
+                                              label: 'Featured',
+                                              icon: Icons.star_rounded,
+                                              color: const Color(0xFF7B4DCC),
+                                            ),
+                                          if (product.isNewArrival)
+                                            _ProductFlagBadge(
+                                              label: 'New arrival',
+                                              icon: Icons.fiber_new_rounded,
+                                              color: const Color(0xFF00897B),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              PopupMenuButton<String>(
+                                onSelected: (value) async {
+                                  if (value == 'edit') {
+                                    await Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => AddEditProductScreen(
+                                          product: product,
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
 
-                              if (value == 'delete') {
-                                await _deleteProduct(product);
-                              }
-                            },
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(value: 'edit', child: Text('Edit')),
-                              PopupMenuItem(
-                                value: 'delete',
-                                child: Text('Delete'),
+                                  if (value == 'delete') {
+                                    await _deleteProduct(product);
+                                  }
+                                },
+                                itemBuilder: (_) => const [
+                                  PopupMenuItem(
+                                    value: 'edit',
+                                    child: Text('Edit'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'delete',
+                                    child: Text('Delete'),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -206,6 +253,47 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ProductFlagBadge extends StatelessWidget {
+  const _ProductFlagBadge({
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: '$label status is active',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .1),
+          borderRadius: BorderRadius.circular(99),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 14),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
