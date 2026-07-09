@@ -8,6 +8,7 @@ import 'package:shoefit/models/dashboard_analytics.dart';
 import 'package:shoefit/providers/auth_provider.dart';
 import 'package:shoefit/providers/order_provider.dart';
 import 'package:shoefit/screens/admin/admin_orders_screen.dart';
+import 'package:shoefit/screens/admin/admin_performance_screen.dart';
 import 'package:shoefit/screens/admin/admin_products_screen.dart';
 import 'package:shoefit/screens/auth/login_screen.dart';
 
@@ -45,6 +46,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const AdminProductsScreen()));
+  }
+
+  void _openPerformanceReport() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AdminPerformanceScreen()));
   }
 
   Future<void> _logout() async {
@@ -122,6 +129,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               subtitle: _range.days == null
                   ? 'Paid sales over time'
                   : 'Current period compared with the previous period',
+              action: 'Full report',
+              onAction: _openPerformanceReport,
             ),
             const SizedBox(height: 12),
             _RevenueComparisonChart(
