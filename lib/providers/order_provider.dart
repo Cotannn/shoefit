@@ -89,12 +89,48 @@ class OrderProvider extends ChangeNotifier {
   Future<void> updateOrderStatus({
     required String orderId,
     required String status,
-  }) {
-    return _orderService.updateOrderStatus(orderId: orderId, status: status);
+  }) async {
+    await _orderService.updateOrderStatus(orderId: orderId, status: status);
+    _orders = _replaceStatus(_orders, orderId, status);
+    _adminOrders = _replaceStatus(_adminOrders, orderId, status);
+    notifyListeners();
+  }
+
+  Future<void> confirmOrderReceived({
+    required String userId,
+    required String orderId,
+  }) async {
+    await _orderService.confirmOrderReceived(userId: userId, orderId: orderId);
+    _orders = _replaceStatus(_orders, orderId, 'Completed');
+    _adminOrders = _replaceStatus(_adminOrders, orderId, 'Completed');
+    notifyListeners();
+  }
+
+  Future<void> refreshAdminOrders() async {
+    if (!_isAdmin) {
+      return;
+    }
+    final orders = await _orderService.fetchAllOrders();
+    _adminOrders = orders;
+    notifyListeners();
   }
 
   Future<Map<String, num>> fetchDashboardStats() {
     return _orderService.fetchDashboardStats();
+  }
+
+  List<OrderModel> _replaceStatus(
+    List<OrderModel> source,
+    String orderId,
+    String status,
+  ) {
+    return source
+        .map(
+          (order) => order.orderId == orderId
+              ? order.copyWith(orderStatus: status)
+              : order,
+        )
+        .toList();
   }
 
   @override

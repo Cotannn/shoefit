@@ -88,6 +88,52 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
+    final shouldPlaceOrder = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.lock_outline_rounded),
+        title: const Text('Confirm your purchase'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _ConfirmationLine(
+              label: 'Items',
+              value: '${cartProvider.itemCount}',
+            ),
+            _ConfirmationLine(
+              label: 'Delivery to',
+              value:
+                  '${_cityController.text.trim()}, ${_stateController.text.trim()}',
+            ),
+            _ConfirmationLine(
+              label: 'Amount',
+              value: AppFormatters.currency(cartProvider.total),
+              isBold: true,
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Your demo payment will be recorded as paid and stock will be reserved.',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Review order'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.check_rounded),
+            label: const Text('Confirm and pay'),
+          ),
+        ],
+      ),
+    );
+    if (shouldPlaceOrder != true || !mounted) {
+      return;
+    }
+
     setState(() => _isPlacingOrder = true);
 
     try {
@@ -302,7 +348,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 child: Text(
                   _isPlacingOrder
                       ? 'Processing Payment...'
-                      : 'Place Demo Order',
+                      : 'Pay ${AppFormatters.currency(cartProvider.total)}',
                 ),
               ),
             ],
@@ -343,6 +389,41 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return 'Enter a 3-digit CVC.';
     }
     return null;
+  }
+}
+
+class _ConfirmationLine extends StatelessWidget {
+  const _ConfirmationLine({
+    required this.label,
+    required this.value,
+    this.isBold = false,
+  });
+
+  final String label;
+  final String value;
+  final bool isBold;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

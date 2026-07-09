@@ -24,6 +24,15 @@ class AppConstants {
     'Packed',
     'Shipped',
     'Delivered',
+    'Completed',
+    'Cancelled',
+  ];
+
+  static const customerOrderFilters = [
+    'All',
+    'Active',
+    'Delivered',
+    'Completed',
     'Cancelled',
   ];
 

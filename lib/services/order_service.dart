@@ -59,6 +59,20 @@ class OrderService {
     );
   }
 
+  Future<void> confirmOrderReceived({
+    required String userId,
+    required String orderId,
+  }) async {
+    if (userId.trim().isEmpty) {
+      throw Exception('Please sign in again to confirm this order.');
+    }
+
+    await _apiClient.post(
+      '/confirm_order_received.php',
+      body: {'user_id': userId, 'order_id': _parseId(orderId)},
+    );
+  }
+
   Future<Map<String, num>> fetchDashboardStats() async {
     final data = readObject(await _apiClient.get('/test.php'));
     List<OrderModel> adminOrders = const [];

@@ -36,6 +36,73 @@ class OrderModel {
   int get itemCount =>
       items.fold(0, (runningTotal, item) => runningTotal + item.quantity);
 
+  String get normalizedStatus => orderStatus.trim().toLowerCase();
+  String get normalizedPaymentStatus => paymentStatus.trim().toLowerCase();
+  bool get isPaid => normalizedPaymentStatus == 'paid';
+  bool get isCancelled => normalizedStatus == 'cancelled';
+  bool get isDelivered => normalizedStatus == 'delivered';
+  bool get isCompleted => normalizedStatus == 'completed';
+  bool get isActive => !isCancelled && !isCompleted;
+  bool get canConfirmReceipt => isDelivered;
+
+  int get statusStep {
+    switch (normalizedStatus) {
+      case 'packed':
+        return 1;
+      case 'shipped':
+        return 2;
+      case 'delivered':
+        return 3;
+      case 'completed':
+        return 4;
+      default:
+        return 0;
+    }
+  }
+
+  DateTime get estimatedDeliveryDate => orderDate.add(const Duration(days: 5));
+
+  String get paymentReference {
+    if (stripePaymentId.trim().isNotEmpty) {
+      return stripePaymentId;
+    }
+    return 'SF-${orderId.trim().toUpperCase()}';
+  }
+
+  OrderModel copyWith({
+    String? orderId,
+    String? userId,
+    String? customerName,
+    String? customerPhone,
+    String? deliveryAddress,
+    List<CartItemModel>? items,
+    double? subtotal,
+    double? shippingFee,
+    double? totalPrice,
+    String? paymentMethod,
+    String? paymentStatus,
+    String? stripePaymentId,
+    String? orderStatus,
+    DateTime? orderDate,
+  }) {
+    return OrderModel(
+      orderId: orderId ?? this.orderId,
+      userId: userId ?? this.userId,
+      customerName: customerName ?? this.customerName,
+      customerPhone: customerPhone ?? this.customerPhone,
+      deliveryAddress: deliveryAddress ?? this.deliveryAddress,
+      items: items ?? this.items,
+      subtotal: subtotal ?? this.subtotal,
+      shippingFee: shippingFee ?? this.shippingFee,
+      totalPrice: totalPrice ?? this.totalPrice,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      stripePaymentId: stripePaymentId ?? this.stripePaymentId,
+      orderStatus: orderStatus ?? this.orderStatus,
+      orderDate: orderDate ?? this.orderDate,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'order_id': int.tryParse(orderId) ?? orderId,
