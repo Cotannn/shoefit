@@ -45,6 +45,32 @@ class OrderModel {
   bool get isActive => !isCancelled && !isCompleted;
   bool get canConfirmReceipt => isDelivered;
 
+  String? get nextAdminStatus {
+    switch (normalizedStatus) {
+      case 'processing':
+        return 'Packed';
+      case 'packed':
+        return 'Shipped';
+      case 'shipped':
+        return 'Delivered';
+      default:
+        return null;
+    }
+  }
+
+  List<String> get allowedAdminStatusTransitions {
+    switch (normalizedStatus) {
+      case 'processing':
+        return const ['Packed', 'Cancelled'];
+      case 'packed':
+        return const ['Shipped', 'Cancelled'];
+      case 'shipped':
+        return const ['Delivered', 'Cancelled'];
+      default:
+        return const [];
+    }
+  }
+
   int get statusStep {
     switch (normalizedStatus) {
       case 'packed':

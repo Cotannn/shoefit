@@ -11,10 +11,7 @@ class ProductService {
   final ApiClient _apiClient;
 
   Stream<List<ShoeModel>> streamProducts() async* {
-    while (true) {
-      yield await fetchProducts();
-      await Future<void>.delayed(const Duration(seconds: 2));
-    }
+    yield await fetchProducts();
   }
 
   Future<List<ShoeModel>> fetchProducts() async {

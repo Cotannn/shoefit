@@ -51,7 +51,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
         .length;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Orders')),
+      appBar: AppBar(
+        title: const Text('My Orders'),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh orders',
+            onPressed: provider.isLoading ? null : provider.refreshUserOrders,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
       body: provider.orders.isEmpty
           ? const EmptyStateWidget(
               title: 'No orders yet',

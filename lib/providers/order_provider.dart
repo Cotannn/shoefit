@@ -107,11 +107,43 @@ class OrderProvider extends ChangeNotifier {
   }
 
   Future<void> refreshAdminOrders() async {
-    if (!_isAdmin) {
+    if (!_isAdmin || _isAdminLoading) {
       return;
     }
-    final orders = await _orderService.fetchAllOrders();
-    _adminOrders = orders;
+    _isAdminLoading = true;
+    if (_adminOrders.isEmpty) {
+      notifyListeners();
+    }
+    try {
+      _adminOrders = await _orderService.fetchAllOrders();
+    } finally {
+      _isAdminLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> refreshUserOrders() async {
+    final userId = _userId;
+    if (userId == null || _isLoading) {
+      return;
+    }
+    _isLoading = true;
+    if (_orders.isEmpty) {
+      notifyListeners();
+    }
+    try {
+      _orders = await _orderService.fetchUserOrders(userId);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void recordPlacedOrder(OrderModel order) {
+    _orders = [
+      order,
+      ..._orders.where((existing) => existing.orderId != order.orderId),
+    ];
     notifyListeners();
   }
 

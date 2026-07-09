@@ -10,10 +10,7 @@ class FavouriteService {
   final ApiClient _apiClient;
 
   Stream<Set<String>> streamFavouriteIds(String userId) async* {
-    while (true) {
-      yield await fetchFavouriteIds(userId);
-      await Future<void>.delayed(const Duration(seconds: 2));
-    }
+    yield await fetchFavouriteIds(userId);
   }
 
   Future<Set<String>> fetchFavouriteIds(String userId) async {

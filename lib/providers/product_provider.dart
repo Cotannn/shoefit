@@ -53,6 +53,20 @@ class ProductProvider extends ChangeNotifier {
   Future<void> deleteProduct(String productId) =>
       _runSave(() => _productService.deleteProduct(productId));
 
+  Future<void> refreshProducts() async {
+    _errorMessage = null;
+    try {
+      _products = await _productService.fetchProducts();
+      _isLoading = false;
+      notifyListeners();
+    } catch (error) {
+      _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   Future<void> _runSave(Future<void> Function() action) async {
     _isSaving = true;
     _errorMessage = null;
@@ -60,6 +74,7 @@ class ProductProvider extends ChangeNotifier {
 
     try {
       await action();
+      _products = await _productService.fetchProducts();
     } catch (error) {
       _errorMessage = error.toString().replaceFirst('Exception: ', '');
       rethrow;

@@ -10,17 +10,11 @@ class OrderService {
   final ApiClient _apiClient;
 
   Stream<List<OrderModel>> streamUserOrders(String userId) async* {
-    while (true) {
-      yield await fetchUserOrders(userId);
-      await Future<void>.delayed(const Duration(seconds: 2));
-    }
+    yield await fetchUserOrders(userId);
   }
 
   Stream<List<OrderModel>> streamAllOrders() async* {
-    while (true) {
-      yield await fetchAllOrders();
-      await Future<void>.delayed(const Duration(seconds: 2));
-    }
+    yield await fetchAllOrders();
   }
 
   Future<List<OrderModel>> fetchUserOrders(String userId) async {

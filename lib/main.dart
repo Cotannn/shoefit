@@ -112,7 +112,9 @@ class ShoeFitApp extends StatelessWidget {
             final provider =
                 cartProvider ??
                 CartProvider(cartService: context.read<CartService>());
-            provider.bindUser(authProvider.user?.uid);
+            provider.bindUser(
+              authProvider.isAdmin ? null : authProvider.user?.uid,
+            );
             return provider;
           },
         ),
@@ -126,7 +128,9 @@ class ShoeFitApp extends StatelessWidget {
                 FavouriteProvider(
                   favouriteService: context.read<FavouriteService>(),
                 );
-            provider.bindUser(authProvider.user?.uid);
+            provider.bindUser(
+              authProvider.isAdmin ? null : authProvider.user?.uid,
+            );
             return provider;
           },
         ),
@@ -137,7 +141,9 @@ class ShoeFitApp extends StatelessWidget {
             final provider =
                 orderProvider ??
                 OrderProvider(orderService: context.read<OrderService>());
-            provider.bindUser(authProvider.user?.uid);
+            provider.bindUser(
+              authProvider.isAdmin ? null : authProvider.user?.uid,
+            );
             provider.bindAdmin(authProvider.isAdmin);
             return provider;
           },

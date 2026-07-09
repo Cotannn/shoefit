@@ -49,6 +49,17 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       return;
     }
 
+    if (!order.allowedAdminStatusTransitions.contains(status)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${order.orderStatus} → $status is not an allowed order transition.',
+          ),
+        ),
+      );
+      return;
+    }
+
     final isCancellation = status == 'Cancelled';
     final isDelivery = status == 'Delivered';
     final confirmed = await showDialog<bool>(
@@ -271,7 +282,10 @@ class _AdminOrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nextStatus = _nextAdminStatus(order);
+    final nextStatus = order.nextAdminStatus;
+    final otherStatuses = order.allowedAdminStatusTransitions
+        .where((status) => status != nextStatus)
+        .toList();
     return Card(
       child: InkWell(
         onTap: onOpen,
@@ -340,66 +354,65 @@ class _AdminOrderCard extends StatelessWidget {
                 const _WaitingConfirmation(),
               ],
               const SizedBox(height: 15),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: isUpdating ? null : onOpen,
-                      child: const Text('View details'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  if (nextStatus != null)
+              SizedBox(
+                height: 54,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                     Expanded(
-                      child: FilledButton(
-                        onPressed: isUpdating
-                            ? null
-                            : () => onStatusSelected(nextStatus),
-                        child: isUpdating
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
+                      child: OutlinedButton(
+                        onPressed: isUpdating ? null : onOpen,
+                        child: const Text('View details'),
+                      ),
+                    ),
+                    if (nextStatus != null || otherStatuses.isNotEmpty)
+                      const SizedBox(width: 10),
+                    if (nextStatus != null)
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isUpdating
+                              ? null
+                              : () => onStatusSelected(nextStatus),
+                          child: isUpdating
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text('Mark $nextStatus'),
+                                ),
+                        ),
+                      ),
+                    if (nextStatus == null && otherStatuses.isNotEmpty)
+                      Center(
+                        child: PopupMenuButton<String>(
+                          tooltip: 'More status actions',
+                          onSelected: onStatusSelected,
+                          itemBuilder: (_) => otherStatuses
+                              .map(
+                                (status) => PopupMenuItem(
+                                  value: status,
+                                  child: Text('Mark $status'),
                                 ),
                               )
-                            : Text('Mark $nextStatus'),
+                              .toList(),
+                        ),
                       ),
-                    )
-                  else
-                    PopupMenuButton<String>(
-                      tooltip: 'More status actions',
-                      onSelected: onStatusSelected,
-                      itemBuilder: (_) => AppConstants.orderStatuses
-                          .where(
-                            (status) =>
-                                status != order.orderStatus &&
-                                status != 'Completed',
-                          )
-                          .map(
-                            (status) => PopupMenuItem(
-                              value: status,
-                              child: Text('Mark $status'),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                ],
+                  ],
+                ),
               ),
-              if (nextStatus != null)
+              if (otherStatuses.isNotEmpty)
                 Align(
                   alignment: Alignment.centerRight,
                   child: PopupMenuButton<String>(
                     tooltip: 'Other status actions',
                     onSelected: onStatusSelected,
-                    itemBuilder: (_) => AppConstants.orderStatuses
-                        .where(
-                          (status) =>
-                              status != order.orderStatus &&
-                              status != nextStatus &&
-                              status != 'Completed',
-                        )
+                    itemBuilder: (_) => otherStatuses
                         .map(
                           (status) => PopupMenuItem(
                             value: status,
@@ -467,19 +480,6 @@ class _OrderStatusBadge extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-String? _nextAdminStatus(OrderModel order) {
-  switch (order.normalizedStatus) {
-    case 'processing':
-      return 'Packed';
-    case 'packed':
-      return 'Shipped';
-    case 'shipped':
-      return 'Delivered';
-    default:
-      return null;
   }
 }
 

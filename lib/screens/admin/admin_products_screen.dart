@@ -98,7 +98,18 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     final products = _filtered(productProvider.products);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Products')),
+      appBar: AppBar(
+        title: const Text('Manage Products'),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh products',
+            onPressed: productProvider.isSaving
+                ? null
+                : productProvider.refreshProducts,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.of(context).push(

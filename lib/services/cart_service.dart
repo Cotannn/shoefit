@@ -11,10 +11,7 @@ class CartService {
   final ApiClient _apiClient;
 
   Stream<List<CartItemModel>> streamCartItems(String userId) async* {
-    while (true) {
-      yield await fetchCartItems(userId);
-      await Future<void>.delayed(const Duration(seconds: 2));
-    }
+    yield await fetchCartItems(userId);
   }
 
   Future<List<CartItemModel>> fetchCartItems(String userId) async {

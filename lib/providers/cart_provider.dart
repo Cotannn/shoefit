@@ -110,6 +110,30 @@ class CartProvider extends ChangeNotifier {
     await _runMutation(() => _cartService.clearCart(userId));
   }
 
+  Future<void> refreshCart() async {
+    final userId = _userId;
+    if (userId == null) {
+      return;
+    }
+    try {
+      _items = await _cartService.fetchCartItems(userId);
+      _errorMessage = null;
+      _isLoading = false;
+      notifyListeners();
+    } catch (error) {
+      _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  void clearAfterCheckout() {
+    _items = [];
+    _errorMessage = null;
+    notifyListeners();
+  }
+
   String _requireUser() {
     final userId = _userId;
     if (userId == null) {
@@ -125,6 +149,7 @@ class CartProvider extends ChangeNotifier {
 
     try {
       await action();
+      _items = await _cartService.fetchCartItems(_requireUser());
     } catch (error) {
       _errorMessage = error.toString().replaceFirst('Exception: ', '');
       rethrow;

@@ -62,11 +62,28 @@ void main() {
     expect(delivered.canConfirmReceipt, isTrue);
     expect(delivered.isCompleted, isFalse);
     expect(delivered.statusStep, 3);
+    expect(delivered.allowedAdminStatusTransitions, isEmpty);
 
     final completed = delivered.copyWith(orderStatus: 'Completed');
     expect(completed.canConfirmReceipt, isFalse);
     expect(completed.isCompleted, isTrue);
     expect(completed.statusStep, 4);
+  });
+
+  test('admin status transitions only allow the next step or cancellation', () {
+    final processing = _order(
+      id: '11',
+      total: 250,
+      status: 'Processing',
+      date: DateTime(2026, 7, 9),
+    );
+    final packed = processing.copyWith(orderStatus: 'Packed');
+    final shipped = processing.copyWith(orderStatus: 'Shipped');
+
+    expect(processing.allowedAdminStatusTransitions, ['Packed', 'Cancelled']);
+    expect(packed.allowedAdminStatusTransitions, ['Shipped', 'Cancelled']);
+    expect(shipped.allowedAdminStatusTransitions, ['Delivered', 'Cancelled']);
+    expect(packed.allowedAdminStatusTransitions, isNot(contains('Processing')));
   });
 }
 

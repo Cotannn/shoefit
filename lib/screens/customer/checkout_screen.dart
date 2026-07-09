@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shoefit/config/app_formatters.dart';
 import 'package:shoefit/providers/auth_provider.dart';
 import 'package:shoefit/providers/cart_provider.dart';
+import 'package:shoefit/providers/order_provider.dart';
 import 'package:shoefit/screens/customer/order_success_screen.dart';
 import 'package:shoefit/services/payment_service.dart';
 import 'package:shoefit/widgets/custom_text_field.dart';
@@ -155,6 +156,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         return;
       }
 
+      cartProvider.clearAfterCheckout();
+      context.read<OrderProvider>().recordPlacedOrder(order);
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => OrderSuccessScreen(order: order)),
       );

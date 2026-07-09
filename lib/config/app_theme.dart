@@ -68,6 +68,11 @@ class AppTheme {
         side: const BorderSide(color: Color(0xFFD9E0E8)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         labelStyle: const TextStyle(fontWeight: FontWeight.w600, color: _navy),
+        secondaryLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+        checkmarkColor: Colors.white,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,

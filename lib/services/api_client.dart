@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shoefit/config/app_environment.dart';
 
@@ -68,16 +69,16 @@ class ApiClient {
       request.body = jsonEncode(body);
     }
 
-    // ignore: avoid_print
-    print('API URL: $uri');
+    if (kDebugMode) {
+      debugPrint('API $method ${uri.path}');
+    }
 
     try {
       final streamed = await _client.send(request).timeout(_requestTimeout);
       final response = await http.Response.fromStream(streamed);
-      // ignore: avoid_print
-      print('Status Code: ${response.statusCode}');
-      // ignore: avoid_print
-      print('Response Body: ${response.body}');
+      if (kDebugMode) {
+        debugPrint('API $method ${uri.path} -> ${response.statusCode}');
+      }
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception(_buildHttpErrorMessage(response, uri));
