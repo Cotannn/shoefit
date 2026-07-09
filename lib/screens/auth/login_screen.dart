@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shoefit/providers/auth_provider.dart';
-import 'package:shoefit/screens/admin/admin_dashboard_screen.dart';
+import 'package:shoefit/screens/admin/admin_navigation.dart';
 import 'package:shoefit/screens/auth/register_screen.dart';
 import 'package:shoefit/screens/customer/customer_navigation.dart';
 import 'package:shoefit/widgets/custom_text_field.dart';
@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final destination = authProvider.isAdmin
-          ? const AdminDashboardScreen()
+          ? const AdminNavigation()
           : const CustomerNavigation();
 
       Navigator.of(context).pushAndRemoveUntil(

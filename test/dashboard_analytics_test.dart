@@ -43,8 +43,12 @@ void main() {
     expect(analytics.orderCount, 3);
     expect(analytics.averageOrderValue, 150);
     expect(analytics.revenueChange, 100);
+    expect(analytics.unitCount, 2);
+    expect(analytics.unitChange, 100);
+    expect(analytics.cancellationRate, closeTo(33.33, 0.01));
     expect(analytics.statusCounts['Cancelled'], 1);
     expect(analytics.topProducts.single.quantity, 2);
+    expect(analytics.topProducts.single.revenueShare, 100);
   });
 
   test('delivered orders require customer confirmation before completion', () {

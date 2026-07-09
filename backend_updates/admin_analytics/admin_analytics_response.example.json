@@ -1,0 +1,40 @@
+{
+  "success": true,
+  "range": {
+    "days": 30,
+    "current_start": "2026-06-10",
+    "current_end": "2026-07-09",
+    "previous_start": "2026-05-11",
+    "previous_end": "2026-06-09"
+  },
+  "current": {
+    "revenue": 12450.0,
+    "gross_profit": 4830.0,
+    "gross_margin_percent": 38.8,
+    "orders": 42,
+    "units": 67,
+    "average_order_value": 296.43,
+    "cancellation_rate": 4.8
+  },
+  "previous": {
+    "revenue": 10120.0,
+    "gross_profit": 3610.0,
+    "gross_margin_percent": 35.7,
+    "orders": 38,
+    "units": 59,
+    "average_order_value": 266.32,
+    "cancellation_rate": 7.9
+  },
+  "products": [
+    {
+      "product_id": 1,
+      "name": "Velocity One",
+      "revenue": 3990.0,
+      "previous_revenue": 2793.0,
+      "units": 10,
+      "gross_profit": 1510.0,
+      "gross_margin_percent": 37.8,
+      "revenue_share_percent": 32.0
+    }
+  ]
+}

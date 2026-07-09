@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shoefit/config/app_constants.dart';
 import 'package:shoefit/providers/auth_provider.dart';
-import 'package:shoefit/screens/admin/admin_dashboard_screen.dart';
+import 'package:shoefit/screens/admin/admin_navigation.dart';
 import 'package:shoefit/screens/auth/login_screen.dart';
 import 'package:shoefit/screens/customer/customer_navigation.dart';
 import 'package:shoefit/screens/onboarding_screen.dart';
@@ -40,7 +40,7 @@ class _SplashScreenState extends State<SplashScreen> {
     } else if (!authProvider.isAuthenticated) {
       destination = const LoginScreen();
     } else if (authProvider.isAdmin) {
-      destination = const AdminDashboardScreen();
+      destination = const AdminNavigation();
     } else {
       destination = const CustomerNavigation();
     }

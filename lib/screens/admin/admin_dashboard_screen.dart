@@ -5,36 +5,46 @@ import 'package:provider/provider.dart';
 import 'package:shoefit/config/app_constants.dart';
 import 'package:shoefit/config/app_formatters.dart';
 import 'package:shoefit/models/dashboard_analytics.dart';
-import 'package:shoefit/models/order_model.dart';
 import 'package:shoefit/providers/auth_provider.dart';
 import 'package:shoefit/providers/order_provider.dart';
 import 'package:shoefit/screens/admin/admin_orders_screen.dart';
 import 'package:shoefit/screens/admin/admin_products_screen.dart';
 import 'package:shoefit/screens/auth/login_screen.dart';
-import 'package:shoefit/screens/customer/order_detail_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({super.key});
+  const AdminDashboardScreen({super.key, this.onNavigate});
+
+  final ValueChanged<int>? onNavigate;
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  late Future<Map<String, num>> _statsFuture;
   AnalyticsRange _range = AnalyticsRange.thirtyDays;
 
-  @override
-  void initState() {
-    super.initState();
-    _statsFuture = context.read<OrderProvider>().fetchDashboardStats();
+  Future<void> _refresh() {
+    return context.read<OrderProvider>().refreshAdminOrders();
   }
 
-  Future<void> _refresh() async {
-    final provider = context.read<OrderProvider>();
-    final statsFuture = provider.fetchDashboardStats();
-    setState(() => _statsFuture = statsFuture);
-    await Future.wait([statsFuture, provider.refreshAdminOrders()]);
+  void _openOrders() {
+    if (widget.onNavigate != null) {
+      widget.onNavigate!(1);
+      return;
+    }
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AdminOrdersScreen()));
+  }
+
+  void _openProducts() {
+    if (widget.onNavigate != null) {
+      widget.onNavigate!(2);
+      return;
+    }
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AdminProductsScreen()));
   }
 
   Future<void> _logout() async {
@@ -48,175 +58,126 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  void _openOrders() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const AdminOrdersScreen()));
-  }
-
-  void _openProducts() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const AdminProductsScreen()));
-  }
-
   @override
   Widget build(BuildContext context) {
     final profile = context.watch<AuthProvider>().profile;
-    final orderProvider = context.watch<OrderProvider>();
+    final provider = context.watch<OrderProvider>();
+    final analytics = DashboardAnalytics.fromOrders(
+      provider.adminOrders,
+      range: _range,
+    );
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Business overview'),
+        title: const Text('Overview'),
         actions: [
           IconButton(
-            tooltip: 'Refresh dashboard',
+            tooltip: 'Refresh data',
             onPressed: _refresh,
             icon: const Icon(Icons.refresh_rounded),
           ),
-          IconButton(
-            tooltip: 'Sign out',
-            onPressed: _logout,
-            icon: const Icon(Icons.logout_rounded),
-          ),
+          if (widget.onNavigate == null)
+            IconButton(
+              tooltip: 'Sign out',
+              onPressed: _logout,
+              icon: const Icon(Icons.logout_rounded),
+            ),
         ],
       ),
-      body: FutureBuilder<Map<String, num>>(
-        future: _statsFuture,
-        builder: (context, snapshot) {
-          final baseStats = snapshot.data ?? const <String, num>{};
-          final analytics = DashboardAnalytics.fromOrders(
-            orderProvider.adminOrders,
-            range: _range,
-          );
-
-          return RefreshIndicator(
-            onRefresh: _refresh,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-              children: [
-                _BusinessHeader(
-                  name: profile?.fullName ?? 'Admin',
-                  analytics: analytics,
-                ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  height: 42,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: AnalyticsRange.values.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 8),
-                    itemBuilder: (context, index) {
-                      final range = AnalyticsRange.values[index];
-                      return ChoiceChip(
-                        label: Text(range.label),
-                        selected: _range == range,
-                        onSelected: (_) => setState(() => _range = range),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 18),
-                _MetricsGrid(
-                  analytics: analytics,
-                  totalProducts: baseStats['totalProducts']?.toInt() ?? 0,
-                  totalUsers: baseStats['totalUsers']?.toInt() ?? 0,
-                ),
-                if (snapshot.hasError) ...[
-                  const SizedBox(height: 12),
-                  const _InlineNotice(
-                    icon: Icons.cloud_off_rounded,
-                    message:
-                        'Product and user totals are unavailable. Live order analytics are still shown.',
-                  ),
-                ],
-                if (analytics.attentionOrderCount > 0) ...[
-                  const SizedBox(height: 16),
-                  _AttentionCard(
-                    count: analytics.attentionOrderCount,
-                    onTap: _openOrders,
-                  ),
-                ],
-                const SizedBox(height: 24),
-                _SectionHeader(
-                  title: 'Revenue performance',
-                  subtitle: _range.label,
-                ),
-                const SizedBox(height: 12),
-                _RevenueChart(buckets: analytics.buckets),
-                const SizedBox(height: 24),
-                _SectionHeader(
-                  title: 'Order pipeline',
-                  subtitle: '${analytics.pendingOrderCount} need attention',
-                  actionLabel: 'Manage',
-                  onAction: _openOrders,
-                ),
-                const SizedBox(height: 12),
-                _StatusBreakdown(
-                  counts: analytics.statusCounts,
-                  total: analytics.orderCount,
-                ),
-                const SizedBox(height: 24),
-                _SectionHeader(
-                  title: 'Top products',
-                  subtitle: 'Ranked by paid revenue',
-                  actionLabel: 'Inventory',
-                  onAction: _openProducts,
-                ),
-                const SizedBox(height: 12),
-                _TopProducts(products: analytics.topProducts),
-                const SizedBox(height: 24),
-                _SectionHeader(
-                  title: 'Recent orders',
-                  subtitle: 'Latest customer activity',
-                  actionLabel: 'View all',
-                  onAction: _openOrders,
-                ),
-                const SizedBox(height: 12),
-                _RecentOrders(orders: analytics.recentOrders),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _openOrders,
-                        icon: const Icon(Icons.receipt_long_rounded),
-                        label: const Text('Orders'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _openProducts,
-                        icon: const Icon(Icons.inventory_2_outlined),
-                        label: const Text('Products'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          children: [
+            _RevenueHero(
+              name: profile?.fullName ?? 'Admin',
+              analytics: analytics,
+              range: _range,
             ),
-          );
-        },
+            const SizedBox(height: 16),
+            _RangeSelector(
+              selected: _range,
+              onSelected: (range) => setState(() => _range = range),
+            ),
+            const SizedBox(height: 18),
+            _KpiGrid(analytics: analytics),
+            if (analytics.attentionOrderCount > 0) ...[
+              const SizedBox(height: 14),
+              _AttentionCard(
+                count: analytics.attentionOrderCount,
+                onTap: _openOrders,
+              ),
+            ],
+            const SizedBox(height: 24),
+            const _SectionTitle(
+              title: 'What moved the business',
+              subtitle: 'Signals worth acting on',
+            ),
+            const SizedBox(height: 12),
+            _BusinessInsights(analytics: analytics, range: _range),
+            const SizedBox(height: 24),
+            _SectionTitle(
+              title: 'Revenue trend',
+              subtitle: _range.days == null
+                  ? 'Paid sales over time'
+                  : 'Current period compared with the previous period',
+            ),
+            const SizedBox(height: 12),
+            _RevenueComparisonChart(
+              buckets: analytics.buckets,
+              showComparison: _range.days != null,
+            ),
+            const SizedBox(height: 24),
+            _SectionTitle(
+              title: 'Product momentum',
+              subtitle: 'Revenue contribution and sales velocity',
+              action: 'Inventory',
+              onAction: _openProducts,
+            ),
+            const SizedBox(height: 12),
+            _ProductMomentum(
+              products: analytics.topProducts,
+              showComparison: _range.days != null,
+            ),
+            const SizedBox(height: 24),
+            _SectionTitle(
+              title: 'Operations health',
+              subtitle: '${analytics.pendingOrderCount} open order(s)',
+              action: 'Manage',
+              onAction: _openOrders,
+            ),
+            const SizedBox(height: 12),
+            _OperationsSummary(
+              counts: analytics.statusCounts,
+              total: analytics.orderCount,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _BusinessHeader extends StatelessWidget {
-  const _BusinessHeader({required this.name, required this.analytics});
+class _RevenueHero extends StatelessWidget {
+  const _RevenueHero({
+    required this.name,
+    required this.analytics,
+    required this.range,
+  });
 
   final String name;
   final DashboardAnalytics analytics;
+  final AnalyticsRange range;
 
   @override
   Widget build(BuildContext context) {
+    final difference = analytics.revenue - analytics.previousRevenue;
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF0B132B), Color(0xFF19345A)],
+          colors: [Color(0xFF0B132B), Color(0xFF173D5E)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -226,13 +187,23 @@ class _BusinessHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Hello, ${name.split(' ').first}',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            'Welcome back, ${name.split(' ').first}',
+            style: const TextStyle(
               color: Colors.white70,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 18),
+          const Text(
+            'PAID REVENUE',
+            style: TextStyle(
+              color: Colors.white60,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 6),
           Text(
             AppFormatters.currency(analytics.revenue),
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
@@ -240,16 +211,25 @@ class _BusinessHeader extends StatelessWidget {
               fontSize: 34,
             ),
           ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              const Text(
-                'Paid revenue',
-                style: TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(width: 10),
-              _ChangePill(value: analytics.revenueChange),
-            ],
+          if (range.days != null) ...[
+            const SizedBox(height: 9),
+            Row(
+              children: [
+                _DeltaBadge(value: analytics.revenueChange, onDark: true),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    '${difference >= 0 ? '+' : '-'}${AppFormatters.currency(difference.abs())} vs previous ${range.label}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 15),
+          const Text(
+            'Sales revenue before product costs and operating expenses.',
+            style: TextStyle(color: Colors.white54, fontSize: 11),
           ),
         ],
       ),
@@ -257,68 +237,81 @@ class _BusinessHeader extends StatelessWidget {
   }
 }
 
-class _MetricsGrid extends StatelessWidget {
-  const _MetricsGrid({
-    required this.analytics,
-    required this.totalProducts,
-    required this.totalUsers,
-  });
+class _RangeSelector extends StatelessWidget {
+  const _RangeSelector({required this.selected, required this.onSelected});
+
+  final AnalyticsRange selected;
+  final ValueChanged<AnalyticsRange> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 42,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: AnalyticsRange.values.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final range = AnalyticsRange.values[index];
+          return ChoiceChip(
+            label: Text(range.label),
+            selected: selected == range,
+            onSelected: (_) => onSelected(range),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _KpiGrid extends StatelessWidget {
+  const _KpiGrid({required this.analytics});
 
   final DashboardAnalytics analytics;
-  final int totalProducts;
-  final int totalUsers;
 
   @override
   Widget build(BuildContext context) {
     final metrics = [
-      _MetricData(
+      _Metric(
         label: 'Orders',
         value: '${analytics.orderCount}',
+        helper: '${analytics.previousOrderCount} previous',
         icon: Icons.shopping_bag_outlined,
         color: const Color(0xFF3765D8),
         change: analytics.orderChange,
       ),
-      _MetricData(
+      _Metric(
         label: 'Avg. order',
         value: AppFormatters.currency(analytics.averageOrderValue),
-        icon: Icons.payments_outlined,
+        helper: 'Revenue per paid order',
+        icon: Icons.receipt_long_outlined,
         color: const Color(0xFF00897B),
+        change: analytics.averageOrderValueChange,
       ),
-      _MetricData(
-        label: 'Fulfilment',
-        value: '${analytics.fulfilmentRate.toStringAsFixed(0)}%',
-        icon: Icons.task_alt_rounded,
-        color: const Color(0xFF7B4DCC),
-      ),
-      _MetricData(
-        label: 'Customers',
-        value: '${analytics.activeCustomerCount}',
-        icon: Icons.people_alt_outlined,
-        color: const Color(0xFFE17A22),
-        helper: totalUsers > 0 ? '$totalUsers registered' : null,
-      ),
-      _MetricData(
-        label: 'Paid orders',
-        value: '${analytics.paidOrderCount}',
-        icon: Icons.verified_outlined,
-        color: const Color(0xFF118B50),
-      ),
-      _MetricData(
-        label: 'Products',
-        value: '$totalProducts',
+      _Metric(
+        label: 'Units sold',
+        value: '${analytics.unitCount}',
+        helper: 'Paid, non-cancelled',
         icon: Icons.inventory_2_outlined,
-        color: const Color(0xFFB14B6D),
+        color: const Color(0xFF7B4DCC),
+        change: analytics.unitChange,
+      ),
+      _Metric(
+        label: 'Cancelled',
+        value: '${analytics.cancellationRate.toStringAsFixed(1)}%',
+        helper: 'Share of period orders',
+        icon: Icons.block_outlined,
+        color: const Color(0xFFC43E4D),
+        change: analytics.cancellationRateChange,
+        changeUnit: 'pp',
+        positiveIsGood: false,
       ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 800
-            ? 3
-            : constraints.maxWidth >= 480
-            ? 2
-            : 2;
         const spacing = 12.0;
+        final columns = constraints.maxWidth >= 720 ? 4 : 2;
         final width =
             (constraints.maxWidth - spacing * (columns - 1)) / columns;
         return Wrap(
@@ -326,7 +319,10 @@ class _MetricsGrid extends StatelessWidget {
           runSpacing: spacing,
           children: metrics
               .map(
-                (metric) => SizedBox(width: width, child: _MetricCard(metric)),
+                (metric) => SizedBox(
+                  width: width,
+                  child: _MetricCard(metric: metric),
+                ),
               )
               .toList(),
         );
@@ -335,54 +331,63 @@ class _MetricsGrid extends StatelessWidget {
   }
 }
 
-class _MetricData {
-  const _MetricData({
+class _Metric {
+  const _Metric({
     required this.label,
     required this.value,
+    required this.helper,
     required this.icon,
     required this.color,
     this.change,
-    this.helper,
+    this.changeUnit = '%',
+    this.positiveIsGood = true,
   });
 
   final String label;
   final String value;
+  final String helper;
   final IconData icon;
   final Color color;
   final double? change;
-  final String? helper;
+  final String changeUnit;
+  final bool positiveIsGood;
 }
 
 class _MetricCard extends StatelessWidget {
-  const _MetricCard(this.metric);
+  const _MetricCard({required this.metric});
 
-  final _MetricData metric;
+  final _Metric metric;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(15),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
-                    color: metric.color.withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(12),
+                    color: metric.color.withValues(alpha: .11),
+                    borderRadius: BorderRadius.circular(11),
                   ),
-                  child: Icon(metric.icon, color: metric.color, size: 20),
+                  child: Icon(metric.icon, color: metric.color, size: 19),
                 ),
                 const Spacer(),
                 if (metric.change != null)
-                  _ChangePill(value: metric.change, compact: true),
+                  _DeltaBadge(
+                    value: metric.change,
+                    unit: metric.changeUnit,
+                    positiveIsGood: metric.positiveIsGood,
+                    compact: true,
+                  ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 13),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
@@ -394,14 +399,17 @@ class _MetricCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            Text(metric.label),
-            if (metric.helper != null) ...[
-              const SizedBox(height: 3),
-              Text(
-                metric.helper!,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
+            Text(
+              metric.label,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              metric.helper,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         ),
       ),
@@ -409,124 +417,349 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _ChangePill extends StatelessWidget {
-  const _ChangePill({required this.value, this.compact = false});
+class _BusinessInsights extends StatelessWidget {
+  const _BusinessInsights({required this.analytics, required this.range});
 
-  final double? value;
-  final bool compact;
+  final DashboardAnalytics analytics;
+  final AnalyticsRange range;
 
   @override
   Widget build(BuildContext context) {
-    final hasComparison = value != null;
-    final positive = (value ?? 0) >= 0;
-    final color = positive ? const Color(0xFF118B50) : const Color(0xFFC43E4D);
-    final text = hasComparison
-        ? '${positive ? '+' : ''}${value!.toStringAsFixed(0)}%'
-        : 'New';
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 7 : 9,
-        vertical: compact ? 4 : 5,
+    if (analytics.orderCount == 0) {
+      return const _EmptyCard(
+        message: 'No orders in this period. Choose a longer date range.',
+      );
+    }
+
+    final topProduct = analytics.topProducts.firstOrNull;
+    final revenueChange = analytics.revenueChange;
+    final revenueDirection = (revenueChange ?? 0) >= 0 ? 'grew' : 'fell';
+    final insights = <_Insight>[
+      _Insight(
+        icon: revenueDirection == 'grew'
+            ? Icons.trending_up_rounded
+            : Icons.trending_down_rounded,
+        color: revenueDirection == 'grew'
+            ? const Color(0xFF118B50)
+            : const Color(0xFFC43E4D),
+        title: range.days == null
+            ? 'Revenue baseline established'
+            : 'Revenue $revenueDirection ${revenueChange?.abs().toStringAsFixed(0) ?? '—'}%',
+        message: range.days == null
+            ? 'Select a fixed period to compare performance with the preceding period.'
+            : '${AppFormatters.currency((analytics.revenue - analytics.previousRevenue).abs())} ${revenueDirection == 'grew' ? 'more' : 'less'} paid revenue than the previous ${range.label}.',
       ),
-      decoration: BoxDecoration(
-        color: compact
-            ? color.withValues(alpha: .1)
-            : Colors.white.withValues(alpha: .14),
-        borderRadius: BorderRadius.circular(99),
+      if (topProduct != null)
+        _Insight(
+          icon: Icons.workspace_premium_outlined,
+          color: const Color(0xFF7B4DCC),
+          title: '${topProduct.name} leads sales',
+          message:
+              '${topProduct.revenueShare.toStringAsFixed(0)}% of revenue and ${topProduct.quantity} unit(s) sold in this period.',
+        ),
+      _Insight(
+        icon: Icons.people_alt_outlined,
+        color: const Color(0xFF3765D8),
+        title:
+            '${analytics.repeatCustomerRate.toStringAsFixed(0)}% repeat customers',
+        message:
+            '${analytics.activeCustomerCount} paying customer(s); repeat rate counts customers with multiple paid orders in this period.',
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: compact ? color : Colors.white,
-          fontSize: compact ? 10 : 12,
-          fontWeight: FontWeight.w800,
+    ];
+
+    return Card(
+      child: Column(
+        children: insights.indexed.map((entry) {
+          final insight = entry.$2;
+          return Column(
+            children: [
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 5,
+                ),
+                leading: CircleAvatar(
+                  backgroundColor: insight.color.withValues(alpha: .11),
+                  child: Icon(insight.icon, color: insight.color, size: 21),
+                ),
+                title: Text(
+                  insight.title,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(insight.message),
+                ),
+              ),
+              if (entry.$1 < insights.length - 1)
+                const Divider(height: 1, indent: 72),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _Insight {
+  const _Insight({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String message;
+}
+
+class _RevenueComparisonChart extends StatelessWidget {
+  const _RevenueComparisonChart({
+    required this.buckets,
+    required this.showComparison,
+  });
+
+  final List<AnalyticsBucket> buckets;
+  final bool showComparison;
+
+  @override
+  Widget build(BuildContext context) {
+    if (buckets.isEmpty) {
+      return const _EmptyCard(message: 'No revenue data in this period.');
+    }
+    final maxRevenue = buckets.fold<double>(
+      0,
+      (maximum, bucket) =>
+          math.max(maximum, math.max(bucket.revenue, bucket.previousRevenue)),
+    );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+        child: Column(
+          children: [
+            if (showComparison) ...[
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _Legend(color: Color(0xFF17BEBB), label: 'Current'),
+                  SizedBox(width: 14),
+                  _Legend(color: Color(0xFFD7DEE7), label: 'Previous'),
+                ],
+              ),
+              const SizedBox(height: 15),
+            ],
+            SizedBox(
+              height: 190,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: buckets.map((bucket) {
+                  final currentFraction = maxRevenue == 0
+                      ? .02
+                      : math.max(.02, bucket.revenue / maxRevenue);
+                  final previousFraction = maxRevenue == 0
+                      ? .02
+                      : math.max(.02, bucket.previousRevenue / maxRevenue);
+                  return Expanded(
+                    child: Tooltip(
+                      message: showComparison
+                          ? '${AppFormatters.currency(bucket.revenue)} current\n${AppFormatters.currency(bucket.previousRevenue)} previous'
+                          : '${AppFormatters.currency(bucket.revenue)} • ${bucket.orderCount} order(s)',
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (showComparison)
+                                    Expanded(
+                                      child: FractionallySizedBox(
+                                        heightFactor: previousFraction,
+                                        alignment: Alignment.bottomCenter,
+                                        child: Container(
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFFD7DEE7),
+                                            borderRadius: BorderRadius.vertical(
+                                              top: Radius.circular(6),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  if (showComparison) const SizedBox(width: 2),
+                                  Expanded(
+                                    child: FractionallySizedBox(
+                                      heightFactor: currentFraction,
+                                      alignment: Alignment.bottomCenter,
+                                      child: Container(
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFF17BEBB),
+                                          borderRadius: BorderRadius.vertical(
+                                            top: Radius.circular(6),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              bucket.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.fade,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _RevenueChart extends StatelessWidget {
-  const _RevenueChart({required this.buckets});
+class _Legend extends StatelessWidget {
+  const _Legend({required this.color, required this.label});
 
-  final List<AnalyticsBucket> buckets;
+  final Color color;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    final maxRevenue = buckets.fold<double>(
-      0,
-      (current, bucket) => math.max(current, bucket.revenue),
+    return Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 5),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ],
     );
+  }
+}
 
+class _ProductMomentum extends StatelessWidget {
+  const _ProductMomentum({
+    required this.products,
+    required this.showComparison,
+  });
+
+  final List<ProductPerformance> products;
+  final bool showComparison;
+
+  @override
+  Widget build(BuildContext context) {
+    if (products.isEmpty) {
+      return const _EmptyCard(
+        message: 'Product performance appears after paid orders are recorded.',
+      );
+    }
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
-        child: buckets.isEmpty
-            ? const SizedBox(
-                height: 150,
-                child: Center(child: Text('No revenue in this period yet.')),
-              )
-            : SizedBox(
-                height: 190,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: buckets.map((bucket) {
-                    final fraction = maxRevenue == 0
-                        ? 0.03
-                        : math.max(.03, bucket.revenue / maxRevenue);
-                    return Expanded(
-                      child: Tooltip(
-                        message:
-                            '${AppFormatters.currency(bucket.revenue)} • ${bucket.orderCount} orders',
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Column(
-                            children: [
-                              Expanded(
-                                child: Align(
-                                  alignment: Alignment.bottomCenter,
-                                  child: FractionallySizedBox(
-                                    heightFactor: fraction,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF17BEBB),
-                                        borderRadius:
-                                            const BorderRadius.vertical(
-                                              top: Radius.circular(8),
-                                            ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 9),
-                              Text(
-                                bucket.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.fade,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
+      child: Column(
+        children: products.indexed.map((entry) {
+          final index = entry.$1;
+          final product = entry.$2;
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 17,
+                      backgroundColor: const Color(0xFFE8EDF4),
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
-                    );
-                  }).toList(),
+                    ),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            product.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          Text(
+                            '${product.quantity} unit(s) • ${product.revenueShare.toStringAsFixed(0)}% of revenue',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          AppFormatters.currency(product.revenue),
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        if (showComparison)
+                          _DeltaBadge(
+                            value: product.revenueChange,
+                            compact: true,
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
+                const SizedBox(height: 11),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    value: (product.revenueShare / 100).clamp(0, 1),
+                    minHeight: 6,
+                    backgroundColor: const Color(0xFFEDF1F5),
+                    color: index == 0
+                        ? const Color(0xFF17BEBB)
+                        : const Color(0xFF7C8DA5),
+                  ),
+                ),
+                if (index < products.length - 1)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 14),
+                    child: Divider(height: 1),
+                  ),
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
   }
 }
 
-class _StatusBreakdown extends StatelessWidget {
-  const _StatusBreakdown({required this.counts, required this.total});
+class _OperationsSummary extends StatelessWidget {
+  const _OperationsSummary({required this.counts, required this.total});
 
   final Map<String, int> counts;
   final int total;
 
   @override
   Widget build(BuildContext context) {
+    if (total == 0) {
+      return const _EmptyCard(message: 'No orders in this period.');
+    }
     final statuses = [
       ...AppConstants.orderStatuses.where(
         (status) => counts.containsKey(status),
@@ -535,144 +768,74 @@ class _StatusBreakdown extends StatelessWidget {
         (status) => !AppConstants.orderStatuses.contains(status),
       ),
     ];
-
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: statuses.isEmpty
-            ? const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: Text('No orders in this period.')),
-              )
-            : Column(
-                children: statuses.map((status) {
-                  final count = counts[status] ?? 0;
-                  final progress = total == 0 ? 0.0 : count / total;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            _StatusDot(status: status),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                status,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            Text('$count'),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(99),
-                          child: LinearProgressIndicator(
-                            value: progress,
-                            minHeight: 7,
-                            backgroundColor: const Color(0xFFEDF1F5),
-                            color: _statusColor(status),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+        padding: const EdgeInsets.all(16),
+        child: Wrap(
+          spacing: 9,
+          runSpacing: 9,
+          children: statuses.map((status) {
+            final count = counts[status] ?? 0;
+            final color = _statusColor(status);
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: .09),
+                borderRadius: BorderRadius.circular(14),
               ),
+              child: Text(
+                '$status  $count',
+                style: TextStyle(color: color, fontWeight: FontWeight.w800),
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
 }
 
-class _TopProducts extends StatelessWidget {
-  const _TopProducts({required this.products});
+class _DeltaBadge extends StatelessWidget {
+  const _DeltaBadge({
+    required this.value,
+    this.unit = '%',
+    this.positiveIsGood = true,
+    this.onDark = false,
+    this.compact = false,
+  });
 
-  final List<ProductPerformance> products;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: products.isEmpty
-          ? const Padding(
-              padding: EdgeInsets.all(30),
-              child: Center(child: Text('Product sales will appear here.')),
-            )
-          : Column(
-              children: products.indexed.map((entry) {
-                final index = entry.$1;
-                final product = entry.$2;
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: const Color(0xFFE8EDF4),
-                    child: Text(
-                      '${index + 1}',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                  title: Text(
-                    product.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text('${product.quantity} pair(s) sold'),
-                  trailing: Text(
-                    AppFormatters.currency(product.revenue),
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                );
-              }).toList(),
-            ),
-    );
-  }
-}
-
-class _RecentOrders extends StatelessWidget {
-  const _RecentOrders({required this.orders});
-
-  final List<OrderModel> orders;
+  final double? value;
+  final String unit;
+  final bool positiveIsGood;
+  final bool onDark;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    if (orders.isEmpty) {
-      return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(30),
-          child: Center(child: Text('No recent orders.')),
+    final numericValue = value ?? 0;
+    final isGood = positiveIsGood ? numericValue >= 0 : numericValue <= 0;
+    final color = isGood ? const Color(0xFF118B50) : const Color(0xFFC43E4D);
+    final text = value == null
+        ? 'New'
+        : '${numericValue >= 0 ? '+' : ''}${numericValue.toStringAsFixed(unit == 'pp' ? 1 : 0)}$unit';
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 7 : 9,
+        vertical: compact ? 3 : 5,
+      ),
+      decoration: BoxDecoration(
+        color: onDark
+            ? Colors.white.withValues(alpha: .14)
+            : color.withValues(alpha: .1),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: onDark ? Colors.white : color,
+          fontSize: compact ? 10 : 12,
+          fontWeight: FontWeight.w800,
         ),
-      );
-    }
-    return Card(
-      child: Column(
-        children: orders.map((order) {
-          return ListTile(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) =>
-                      OrderDetailScreen(order: order, isAdminView: true),
-                ),
-              );
-            },
-            leading: const CircleAvatar(
-              child: Icon(Icons.receipt_long_outlined, size: 20),
-            ),
-            title: Text(
-              '${order.customerName} • #${order.orderId}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Text(
-              '${order.orderStatus} • ${AppFormatters.date(order.orderDate)}',
-            ),
-            trailing: Text(
-              AppFormatters.currency(order.totalPrice),
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-          );
-        }).toList(),
       ),
     );
   }
@@ -693,14 +856,14 @@ class _AttentionCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(15),
           child: Row(
             children: [
               const Icon(Icons.schedule_rounded, color: Color(0xFFA65A00)),
-              const SizedBox(width: 12),
+              const SizedBox(width: 11),
               Expanded(
                 child: Text(
-                  '$count processing order(s) are older than 48 hours.',
+                  '$count processing order(s) are older than 48 hours',
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
@@ -713,35 +876,17 @@ class _AttentionCard extends StatelessWidget {
   }
 }
 
-class _InlineNotice extends StatelessWidget {
-  const _InlineNotice({required this.icon, required this.message});
-
-  final IconData icon;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 18),
-        const SizedBox(width: 8),
-        Expanded(child: Text(message)),
-      ],
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({
     required this.title,
     required this.subtitle,
-    this.actionLabel,
+    this.action,
     this.onAction,
   });
 
   final String title;
   final String subtitle;
-  final String? actionLabel;
+  final String? action;
   final VoidCallback? onAction;
 
   @override
@@ -759,26 +904,24 @@ class _SectionHeader extends StatelessWidget {
             ],
           ),
         ),
-        if (actionLabel != null)
-          TextButton(onPressed: onAction, child: Text(actionLabel!)),
+        if (action != null)
+          TextButton(onPressed: onAction, child: Text(action!)),
       ],
     );
   }
 }
 
-class _StatusDot extends StatelessWidget {
-  const _StatusDot({required this.status});
+class _EmptyCard extends StatelessWidget {
+  const _EmptyCard({required this.message});
 
-  final String status;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 10,
-      height: 10,
-      decoration: BoxDecoration(
-        color: _statusColor(status),
-        shape: BoxShape.circle,
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(26),
+        child: Center(child: Text(message, textAlign: TextAlign.center)),
       ),
     );
   }
@@ -789,7 +932,7 @@ Color _statusColor(String status) {
     case 'completed':
       return const Color(0xFF118B50);
     case 'delivered':
-      return const Color(0xFF17A673);
+      return const Color(0xFF168A73);
     case 'shipped':
       return const Color(0xFF3765D8);
     case 'packed':
