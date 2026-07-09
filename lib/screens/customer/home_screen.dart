@@ -80,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       body: RefreshIndicator(
-        onRefresh: () async {},
+        onRefresh: productProvider.refreshProducts,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           children: [
@@ -96,7 +96,14 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             const SizedBox(height: 20),
-            PromoBanner(onExploreTap: () => _openCatalogue()),
+            PromoBanner(
+              featuredProduct: productProvider.featuredProducts.isNotEmpty
+                  ? productProvider.featuredProducts.first
+                  : productProvider.newArrivals.isNotEmpty
+                  ? productProvider.newArrivals.first
+                  : null,
+              onExploreTap: () => _openCatalogue(),
+            ),
             const SizedBox(height: 24),
             const SectionTitle(title: 'Shop by category'),
             const SizedBox(height: 14),
